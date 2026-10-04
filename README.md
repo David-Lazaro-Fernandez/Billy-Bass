@@ -33,6 +33,7 @@ Desde `firmware/` (PlatformIO en `C:\Users\david\.platformio\penv\Scripts\pio.ex
 | `pio run -e idle -t upload` | Pausa: todos los motores apagados |
 | `pio run -e motora -t upload` / `motorb` | Prueba un solo motor en ambos sentidos |
 | `pio run -e mictest -t upload` | Muestra el nivel del micrófono |
+| `pio run -e micstream -t upload` | Manda el micrófono a la PC por WiFi (con `python server\mic_receiver.py`); requiere `src/secrets.h` |
 | `pio run -e pinfinder -t upload` | Identifica qué GPIO hay en cada pin |
 
 Desde la raíz: `python tools\usb_speaker.py` reproduce en la PC el audio que recibe el pez.

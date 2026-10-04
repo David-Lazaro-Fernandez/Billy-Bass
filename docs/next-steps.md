@@ -6,7 +6,7 @@ Actualizado: 2026-10-03
 1. **Refinar la sincronización de la boca** — investigación pendiente, ver [handoff-mouth-sync.md](handoff-mouth-sync.md).
 2. **Fase 3: sonido por la bocina del pez** — cuando llegue el MAX98357A: activar la salida I2S en
    `bt_audio.cpp` (`set_stream_reader(..., true)` + pines de `wiring.md`) y retirar el reenvío por USB.
-3. **Fase 5: micrófono → PC** — mandar audio del MAX4466 por WiFi al servidor.
+3. **Fase 5: micrófono → PC + comandos por voz ("Billy, …")** — ver [plan-voice-commands.md](plan-voice-commands.md).
 4. **Fase 6: asistente** — servidor Python: voz → texto → IA → voz, y regresar el audio al pez.
 
 ## Hardware (se dejó para el final)
