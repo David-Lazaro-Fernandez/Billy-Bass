@@ -4,7 +4,7 @@
 #include "usb_audio.h"
 
 const int DECIMATION = 3;
-const int BUFFER_BYTES = 16384;  // ~0.5 s de audio a 14.7 kHz
+const int BUFFER_BYTES = 4096;  // ~140 ms a 14.7 kHz (se vacía cada 20 ms); la RAM no alcanza para más con WiFi
 const int PACKET_SAMPLES = 256;
 
 static StreamBufferHandle_t buffer = nullptr;

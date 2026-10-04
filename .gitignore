@@ -4,3 +4,8 @@ __pycache__/
 .venv/
 .env
 compile_commands.json
+firmware/src/secrets.h
+server/recordings/
+server/models/
+server/.venv-rvc/
+server/.venv-xtts/

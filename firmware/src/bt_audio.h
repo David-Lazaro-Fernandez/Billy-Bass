@@ -10,3 +10,10 @@ typedef void (*BtAudioCallback)(const float *samples, int n, int sampleRate);
 
 void btAudioBegin(const char *deviceName, BtAudioCallback callback);
 bool btAudioConnected();
+
+// Control del celular por AVRCP (lo usan los comandos de voz)
+void btAudioPlay();
+void btAudioPause();
+void btAudioNext();
+void btAudioPrevious();
+void btAudioVolumeStep(int step);  // volumen de 0 a 127; el celular mueve su barra si lo soporta
