@@ -23,14 +23,16 @@ const char *BT_NAME = "Billy Bass";
 #ifdef AUDIO_SOURCE_MIC
 const int SAMPLE_RATE = 8000;             // suficiente para la banda de voz (hasta 3 kHz)
 const int BLOCK_SIZE = SAMPLE_RATE / 50;  // bloques de 20 ms
+const float MIN_OPEN_LEVEL = 80;          // arriba del ruido de los motores (~40)
 float block[BLOCK_SIZE];
 #else
 static int currentRate = 0;
+const float MIN_OPEN_LEVEL = 15;  // ~−43 dBFS; el silencio digital es 0
 
 // Se llama desde la tarea de Bluetooth con cada bloque de audio recibido
 void onBluetoothAudio(const float *samples, int n, int sampleRate) {
   if (sampleRate != currentRate) {
-    mouthSyncBegin(sampleRate);
+    mouthSyncBegin(sampleRate, MIN_OPEN_LEVEL);
     currentRate = sampleRate;
   }
   mouthSyncProcess(samples, n);
@@ -50,7 +52,7 @@ void setup() {
 
 #ifdef AUDIO_SOURCE_MIC
   micBegin();
-  mouthSyncBegin(SAMPLE_RATE);
+  mouthSyncBegin(SAMPLE_RATE, MIN_OPEN_LEVEL);
   Serial.println("Billy Bass: sincronizando boca con el microfono");
 #else
   btAudioBegin(BT_NAME, onBluetoothAudio);
@@ -81,7 +83,8 @@ void loop() {
       return;
     }
 #endif
-    Serial.printf("voz=%5.0f ruido=%4.0f graves=%5.0f boca=%s%s\n", d.envelope, d.noiseFloor, d.bass,
+    Serial.printf("voz=%5.0f ruido=%4.0f pico=%5.0f graves=%5.0f boca=%s%s\n", d.envelope, d.noiseFloor,
+                  d.peak, d.bass,
                   d.mouthOpen ? "ABIERTA" : "cerrada", d.beat ? " [cola]" : "");
     lastPrint = millis();
   }
