@@ -1,3 +1,9 @@
 numpy
 vosk
 rapidfuzz
+faster-whisper
+openai
+boto3
+sounddevice
+python-dotenv
+piper-tts
