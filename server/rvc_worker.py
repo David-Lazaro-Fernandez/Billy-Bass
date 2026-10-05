@@ -6,9 +6,12 @@ comunica por stdin/stdout. Lo arranca y lo usa assistant.py (clase RvcProcess); 
 Protocolo binario (little endian), un pedido a la vez:
     pedido:    uint32 frecuencia | uint32 n | n x int16   (n = 0 para terminar)
     respuesta: uint32 frecuencia | uint32 n | n x int16
+    ajustes:   uint32 0xFFFFFFFF | uint32 largo | JSON {"pitch", "f0", "index_rate", "protect", "rms_mix_rate"}
+               -> respuesta uint32 0 | uint32 0   (cambia los ajustes sin recargar el modelo; lo usa voice_lab.py)
 Todo lo que imprimen las librerías se manda a stderr para no ensuciar el protocolo.
 """
 
+import json
 import os
 import struct
 import sys
@@ -30,6 +33,7 @@ from rvc_python.infer import RVCInference  # noqa: E402
 faiss.read_index = functools.lru_cache(maxsize=4)(faiss.read_index)
 
 HEADER = struct.Struct("<II")
+SETTINGS = 0xFFFFFFFF
 PAD_S = 0.25  # relleno a cada lado de cada pedazo; el original (1 s) casi duplicaba el tiempo de pedazos cortos
 
 
@@ -45,11 +49,10 @@ def read_exact(stream, n):
 
 def main():
     model, index = os.environ["RVC_MODEL"], os.environ.get("RVC_INDEX", "")
-    pitch = int(os.environ.get("RVC_PITCH", "0"))
-    f0_method = os.environ.get("RVC_F0", "pm")
     version = os.environ.get("RVC_VERSION", "v2")
-
     rvc = RVCInference(device="cpu:0")
+    settings = {"pitch": int(os.environ.get("RVC_PITCH", "0")), "f0": os.environ.get("RVC_F0", "pm"),
+                "index_rate": rvc.index_rate, "protect": rvc.protect, "rms_mix_rate": rvc.rms_mix_rate}
     rvc.load_model(model, version=version, index_path=index)
     vc, pipeline = rvc.vc, rvc.vc.pipeline
     pipeline.x_pad = PAD_S
@@ -64,9 +67,10 @@ def main():
         if vc.hubert_model is None:
             from rvc_python.modules.vc.utils import load_hubert
             vc.hubert_model = load_hubert(vc.config, vc.lib_dir)
-        return pipeline.pipeline(vc.hubert_model, vc.net_g, 0, audio16k, "", [0, 0, 0], pitch, f0_method, index,
-                                 rvc.index_rate, vc.if_f0, rvc.filter_radius, vc.tgt_sr, 0, rvc.rms_mix_rate,
-                                 vc.version, rvc.protect, "")
+        s = settings
+        return pipeline.pipeline(vc.hubert_model, vc.net_g, 0, audio16k, "", [0, 0, 0], int(s["pitch"]), s["f0"],
+                                 index, float(s["index_rate"]), vc.if_f0, rvc.filter_radius, vc.tgt_sr, 0,
+                                 float(s["rms_mix_rate"]), vc.version, float(s["protect"]), "")
 
     # Calentar todo el camino (remuestreo, tono, índice) con algo parecido a voz: con silencio no basta y el
     # primer pedazo real tardaba ~7 s
@@ -74,7 +78,8 @@ def main():
     vowel = (0.3 * np.sin(2 * np.pi * 140 * t) * (1 + np.sin(2 * np.pi * 3 * t))).astype(np.float32)
     for _ in range(2):
         convert(librosa.resample(vowel, orig_sr=22050, target_sr=16000))
-    print(f"rvc_worker listo: {os.path.basename(model)}, tono {pitch}, {f0_method}", file=sys.stderr, flush=True)
+    print(f"rvc_worker listo: {os.path.basename(model)}, tono {settings['pitch']}, {settings['f0']}",
+          file=sys.stderr, flush=True)
 
     stdin = sys.stdin.buffer
     while True:
@@ -82,6 +87,11 @@ def main():
             rate, n = HEADER.unpack(read_exact(stdin, HEADER.size))
         except EOFError:
             break
+        if rate == SETTINGS:
+            settings.update(json.loads(read_exact(stdin, n)))
+            protocol_out.write(HEADER.pack(0, 0))
+            protocol_out.flush()
+            continue
         if n == 0:
             break
         pcm = np.frombuffer(read_exact(stdin, n * 2), dtype="<i2").astype(np.float32) / 32768

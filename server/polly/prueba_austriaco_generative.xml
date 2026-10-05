@@ -1,0 +1,15 @@
+<speak>
+  <p>
+    <s>Jawohl, mein Freund.</s>
+    <s><lang xml:lang="es-MX">Soy Billy, el pez más fuerte del universo, y hoy es día de pierna.</lang></s>
+    <s><lang xml:lang="es-MX">Son las doce y media, hora perfecta para la serie de sentadillas.</lang></s>
+  </p>
+  <break time="500ms"/>
+  <p>
+    <s>Sehr gut.</s>
+    <s><lang xml:lang="es-MX">Chubascos todo el día, pero el gimnasio nunca cierra.</lang></s>
+    <s>Nein, nein, nein.</s>
+    <s><lang xml:lang="es-MX">Los gatos no hacen sentadillas. Cero masa muscular.</lang></s>
+    <s><lang xml:lang="es-MX">Volveré después de mi serie de bíceps.</lang></s>
+  </p>
+</speak>

@@ -10,6 +10,8 @@ import unicodedata
 
 from rapidfuzz import fuzz
 
+import personalities
+
 WAKE_WORDS = ["billy", "bili", "billi", "vili", "bily", "willy"]
 PREFIXES = ["oye"]  # "oye Billy, pausa" también vale
 WAKE_MIN_SCORE = 0.75
@@ -26,9 +28,11 @@ COMMANDS = {
     "subir_volumen": ["sube", "súbele"],
     "bajar_volumen": ["baja", "bájale"],
     "baila": ["baila", "muévete"],
-    "modo_bocina": ["modo bocina", "bocina"],  # a veces Vosk pierde "modo"
-    "modo_asistente": ["modo asistente", "asistente"],
 }
+# "Billy, modo pirata" cambia de personalidad (las lee de server/personalidades/). Estos los atiende el servidor,
+# no el pez. (modo bocina / modo asistente se quitaron: con Bluetooth y WiFi juntos no hacen falta modos.)
+PERSONALITY_PREFIX = "personalidad:"
+COMMANDS.update({f"{PERSONALITY_PREFIX}{p.key}": [f"modo {p.name}"] for p in personalities.load_all().values()})
 
 
 def normalize(text):

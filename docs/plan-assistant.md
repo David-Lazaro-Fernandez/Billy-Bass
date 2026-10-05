@@ -14,7 +14,11 @@ Creado: 2026-10-03 · Estado: **en desarrollo**
   o variables de entorno).
 
 ## Personalidad y funciones (2026-10-03)
-- **Personalidad**: `server/billy_persona.md` (se relee en cada pregunta). Va siempre idéntica al inicio de la
+- **Personalidades**: `server/personalidades/` (reglas comunes en `_base.md` + un archivo por personalidad, con su
+  voz de Piper). Se cambia con "Billy, modo <nombre>": normal, mafioso, pirata, abuelito, dramático. Al cambiar se
+  borra el historial y Billy se presenta. Para agregar una, copiar un archivo y reiniciar el servidor de voz (el
+  nombre debe existir en el vocabulario de Vosk).
+- **Personalidad en la petición**: se relee en cada pregunta. Va siempre idéntica al inicio de la
   petición para que DeepSeek la tome de su caché (~50× más barata); desde la segunda pregunta, 75–85 % de la
   entrada sale del caché. La hora va junto a la pregunta, no en la personalidad, para no romper ese prefijo.
 - **Hora**: siempre de la Ciudad de México (UTC−6 fijo; sin horario de verano desde 2022), en `tools.py`.
@@ -24,10 +28,11 @@ Creado: 2026-10-03 · Estado: **en desarrollo**
   tokens antes de responder.
 
 ## Voz de Billy (2026-10-03)
-Piper `es_MX-claude-high` (voz femenina, Apache 2.0) convertida con RVC al modelo "Jorge" v2, 13 semitonos abajo,
-tono `pm`. Se elige con `TTS_ENGINE` en `server/.env` (`piper_rvc`, `piper` o `polly`).
-- RVC va a ~1–1.4× el tiempo real en esta CPU (sin GPU NVIDIA): la primera frase suena ~3–7 s después del texto.
-  Pendiente: acelerarlo (cortar frases en comas, hilos, ONNX).
+Por defecto, solo Piper `es_MX-claude-high` (voz femenina, Apache 2.0): <1 s por frase. Se elige con
+`TTS_ENGINE` en `server/.env` (`piper`, `piper_rvc` o `polly`).
+- `piper_rvc` convierte la voz de Piper al modelo RVC "Jorge" v2, 13 semitonos abajo, tono `pm`. Suena mejor,
+  pero en esta CPU (sin GPU NVIDIA) va a ~1–1.4× el tiempo real: la primera frase tardaba 6–10 s en sonar tras
+  la pregunta. Se dejó de usar por la espera (2026-10-03); para volver a usarlo habría que acelerarlo (ONNX o GPU).
 - Modelos (no van en git, en `server/models/`): Vosk `vosk-model-small-es-0.42`, Piper `es_MX-claude-high`
   (de `rhasspy/piper-voices`), RVC `Jorge-v2/model.pth` + `model.index`. Jorge es un modelo de aficionado sin
   licencia de una voz de Nuance (Loquendo): solo para uso personal.
