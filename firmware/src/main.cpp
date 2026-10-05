@@ -71,8 +71,22 @@ float block[BLOCK_SIZE];
 static int currentRate = 0;
 const float MIN_OPEN_LEVEL = 15;  // ~−43 dBFS; el silencio digital es 0
 
+#ifdef VOICE_COMMANDS
+// Billy está hablando (llega su voz del servidor): la boca la sigue a ella y no a la música
+static volatile unsigned long speechUntil = 0;
+static bool speaking() {
+  return millis() < speechUntil;
+}
+#endif
+
 // Se llama desde la tarea de Bluetooth con cada bloque de audio recibido
 void onBluetoothAudio(const float *samples, int n, int sampleRate) {
+#ifdef VOICE_COMMANDS
+  if (speaking()) {
+    usbAudioPush(samples, n, sampleRate);
+    return;
+  }
+#endif
   if (sampleRate != currentRate) {
     mouthSyncBegin(sampleRate, MIN_OPEN_LEVEL);
     currentRate = sampleRate;
@@ -84,6 +98,21 @@ void onBluetoothAudio(const float *samples, int n, int sampleRate) {
 #endif
   usbAudioPush(samples, n, sampleRate);
 }
+
+#ifdef VOICE_COMMANDS
+// La voz de Billy (respuestas del asistente) mueve la boca con el mismo algoritmo que la música
+static void onSpeechAudio(const int16_t *samples, int n, int sampleRate) {
+  static float block[512];
+  n = min(n, 512);
+  for (int i = 0; i < n; i++) block[i] = samples[i] / 16.0f;  // misma escala que el Bluetooth (±2048)
+  speechUntil = millis() + 300;
+  if (sampleRate != currentRate) {
+    mouthSyncBegin(sampleRate, MIN_OPEN_LEVEL);
+    currentRate = sampleRate;
+  }
+  if (!gestureBusy) mouthSyncProcess(block, n);
+}
+#endif
 #endif
 
 void setup() {
@@ -106,6 +135,7 @@ void setup() {
 #endif
 #ifdef VOICE_COMMANDS
   voiceLinkBegin(15000);
+  voiceLinkOnAudio(onSpeechAudio);
   micDmaBegin(MIC_RATE);
   Serial.printf("Comandos de voz activos. Memoria libre: %u bytes\n", ESP.getFreeHeap());
 #endif
@@ -120,9 +150,14 @@ void loop() {
 #ifdef VOICE_COMMANDS
   micDmaRead(micBlock, MIC_BLOCK);  // espera ~20 ms: marca el ritmo del loop
   gestureBusy = gestureUpdate();
-  voiceLinkSend(micBlock, MIC_BLOCK, MIC_RATE, gestureBusy);
+  voiceLinkSend(micBlock, MIC_BLOCK, MIC_RATE, gestureBusy || speaking());
   char command[32];
   if (voiceLinkPollCommand(command, sizeof(command))) runVoiceCommand(command);
+
+  // Al terminar de hablar ya no llegan bloques que la cierren: se cierra aquí
+  static bool wasSpeaking = false;
+  if (wasSpeaking && !speaking() && !gestureBusy) mouthClose();
+  wasSpeaking = speaking();
 #else
   delay(5);
 #endif

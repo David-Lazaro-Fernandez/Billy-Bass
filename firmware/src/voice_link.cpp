@@ -18,6 +18,7 @@ static uint32_t sequence = 0;
 static float dcLevel = -1;     // -1 = todavía sin medir
 static WiFiUDP *udp = nullptr;  // se crea al conectar: así el programa principal no carga WiFi si no lo usa
 static long lastCommandId = -1;
+static VoiceLinkAudioCallback audioCallback = nullptr;
 
 // El socket escucha en SERVER_PORT: así el servidor responde a la misma dirección de la que llega el audio.
 static bool ensureSocket() {
@@ -83,29 +84,45 @@ void voiceLinkSend(const float *samples, int n, int sampleRate, bool busy) {
   sequence++;
 }
 
+void voiceLinkOnAudio(VoiceLinkAudioCallback callback) {
+  audioCallback = callback;
+}
+
 bool voiceLinkPollCommand(char *command, int size) {
-  if (!ensureSocket() || !udp->parsePacket()) return false;
-  char text[64];
-  int len = udp->read((uint8_t *)text, sizeof(text) - 1);
-  if (len <= 0) return false;
-  text[len] = 0;
+  static uint8_t packet[12 + MAX_SAMPLES * 2];
+  if (!ensureSocket()) return false;
 
-  long id;
-  char name[32];
-  if (sscanf(text, "CMD %ld %31s", &id, name) != 2) return false;
+  // Puede haber varios paquetes de voz en espera (llegan 50 por segundo): se atienden todos
+  while (udp->parsePacket()) {
+    int len = udp->read(packet, sizeof(packet) - 1);
+    if (len >= 12 && packet[0] == 'B' && packet[1] == 'A') {
+      uint16_t rate, n;
+      memcpy(&rate, packet + 8, 2);
+      memcpy(&n, packet + 10, 2);
+      if (audioCallback && 12 + n * 2 <= len) audioCallback((const int16_t *)(packet + 12), n, rate);
+      continue;
+    }
+    if (len <= 0) continue;
+    packet[len] = 0;
 
-  // Acuse siempre (aunque sea repetido): si el acuse anterior se perdió, el servidor deja de reenviar
-  char ack[24];
-  int ackLen = snprintf(ack, sizeof(ack), "ACK %ld", id);
-  udp->beginPacket(udp->remoteIP(), udp->remotePort());
-  udp->write((const uint8_t *)ack, ackLen);
-  udp->endPacket();
+    long id;
+    char name[32];
+    if (sscanf((const char *)packet, "CMD %ld %31s", &id, name) != 2) continue;
 
-  if (id == lastCommandId) return false;  // reenvío de uno ya ejecutado
-  lastCommandId = id;
-  strncpy(command, name, size - 1);
-  command[size - 1] = 0;
-  return true;
+    // Acuse siempre (aunque sea repetido): si el acuse anterior se perdió, el servidor deja de reenviar
+    char ack[24];
+    int ackLen = snprintf(ack, sizeof(ack), "ACK %ld", id);
+    udp->beginPacket(udp->remoteIP(), udp->remotePort());
+    udp->write((const uint8_t *)ack, ackLen);
+    udp->endPacket();
+
+    if (id == lastCommandId) continue;  // reenvío de uno ya ejecutado
+    lastCommandId = id;
+    strncpy(command, name, size - 1);
+    command[size - 1] = 0;
+    return true;
+  }
+  return false;
 }
 
 uint32_t voiceLinkPacketsSent() {
