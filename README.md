@@ -2,6 +2,9 @@
 
 Convertir un Billy Bass en bocina Bluetooth y asistente de voz con un ESP32.
 
+Me compré un Billy Bass en un tianguis por 500 MXN y como me encantan los Sopranos quise armar mi propio asistente
+personal que me hable en forma de mojarra.
+
 ## Estructura
 - `firmware/` — código C++ para el ESP32 (PlatformIO)
 - `server/` — servidor Python (voz → texto → IA → voz)
